@@ -1,7 +1,4 @@
-name: Deploy Images to GHCR
-
-env:
-  DOTNET_VERSION: '6.0.x'
+name: Build images
 
 on:
   push:
@@ -9,26 +6,33 @@ on:
       - main
     paths:
       - apps/api/**
+      - apps/playwright-service-ts/**
   workflow_dispatch:
 
 jobs:
-      push-app-image:
-        runs-on: ubuntu-latest
-        defaults:
-          run:
-            working-directory: './apps/api'
-        steps:
-          - name: 'Checkout GitHub Action'
-            uses: actions/checkout@main
+  build-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-          - name: 'Login to GitHub Container Registry'
-            uses: docker/login-action@v1
-            with:
-              registry: ghcr.io
-              username: ${{github.actor}}
-              password: ${{secrets.GITHUB_TOKEN}}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          - name: 'Build Inventory Image'
-            run: |
-              docker build . --tag ghcr.io/mendableai/firecrawl:latest
-              docker push ghcr.io/mendableai/firecrawl:latest
+      - name: Build firecrawl image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/api
+          push: true
+          tags: ghcr.io/dbirks/firecrawl
+
+      - name: Build playwright-service image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/playwright-service-ts
+          push: true
+          tags: ghcr.io/dbirks/firecrawl-playwright
